@@ -1,0 +1,43 @@
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+repositories {
+    google()
+    jcenter()
+}
+
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 28
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 3
+        versionName "3.0.0"
+        ndk {
+            // Ensure your C++ library (.so) is included in these ABIs
+            abiFilters 'armeabi-v7a', 'arm64-v8a','x86_64'
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['jniLibs']
+        }
+    }
+
+}
+
+dependencies {
+    implementation project(':android-pdf-viewer')
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'org.androidannotations:androidannotations-api:4.6.0'
+    annotationProcessor "org.androidannotations:androidannotations:4.6.0"
+    implementation(files("libs\\hole.aar"))
+}
