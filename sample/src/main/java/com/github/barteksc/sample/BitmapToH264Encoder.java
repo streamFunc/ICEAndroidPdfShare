@@ -134,7 +134,7 @@ public class BitmapToH264Encoder {
         bitmap.getPixels(argb, 0, w, 0, 0, w, h);
 
         byte[] yuv = new byte[w * h * 3 / 2];
-        encodeYUV420SP(yuv, argb, w, h);
+        convertArgbToI420(yuv, argb, w, h);
 
         return yuv;
     }

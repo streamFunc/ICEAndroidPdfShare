@@ -31,6 +31,10 @@ android {
             jniLibs.srcDirs = ['jniLibs']
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 
 }
 
@@ -40,4 +44,5 @@ dependencies {
     implementation 'org.androidannotations:androidannotations-api:4.6.0'
     annotationProcessor "org.androidannotations:androidannotations:4.6.0"
     implementation(files("libs\\hole.aar"))
+   // implementation(files("libs\\rtmpSdk.aar"))
 }

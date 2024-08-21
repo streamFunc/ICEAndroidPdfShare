@@ -28,11 +28,12 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.ParcelFileDescriptor;
-import android.provider.DocumentsContract;
-import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
@@ -70,7 +71,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+
 import hole.Hole;
+//import rtmpSdk.RtmpSdk;
+
 
 
 
@@ -83,6 +87,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     private boolean isSharing = false;
     private boolean startOK = false;
     private boolean fileCopy = false;
+    private boolean encodeFinished = true;
     private final static int REQUEST_CODE = 42;
     public static final int PERMISSION_CODE = 42042;
     public static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 1;
@@ -98,6 +103,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
 
     @NonConfigurationInstance
     Integer pageNumber = 0;
+    Integer pageTotal = 0;
 
     String pdfFileName;
     File pdfFile;
@@ -105,32 +111,21 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
 
 
     //private FileOutputStream fileOutputStream;
-    //private BitmapToH264Encoder encoder = new BitmapToH264Encoder();
+  //  private BitmapToH264Encoder encoder = new BitmapToH264Encoder();
 
-    //static {
-        // Load the native library
-       // Log.d("X264","load x264 lib");
-       // System.loadLibrary("h264_encode");
-    //}
 
     X264Encode encoder = new X264Encode() {
         @Override
         public void onReceiveNal(byte[] nal) {
-            Log.d("myTest","receive nal");
+            String logMessage = "receive nal len: " + String.valueOf(nal.length);
+            Log.d("myTest",logMessage);
 
             if (startOK){
-                /*if (fileOutputStream != null) {
-                    try {
-                        Log.d("myTest","write nal");
-                        fileOutputStream.write(nal);
-                        fileOutputStream.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }else{
-                    Log.d("myTest","open file fail");
-                }*/
-                Hole.startSendH264ByteQueue("whatever",nal);
+
+                byte[] nalCopy = new byte[nal.length];
+                System.arraycopy(nal, 0, nalCopy, 0, nal.length);
+                Hole.startSendH264ByteQueue("whatever",nalCopy);
+               // RtmpSdk.startPush(nalCopy);
             }
         }
     };
@@ -160,6 +155,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
             Log.d("myTest","stop shared file...");
             item.setTitle("开始分享");
             Hole.stopConnect("whatever");
+
             startOK = false;
             /*if (fileOutputStream != null) {
                 try {
@@ -168,16 +164,20 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
                     e.printStackTrace();
                 }
             }*/
-           // encoder.stopEncoder();
-        }else{
+            //encoder.stopEncoder();
+            //RtmpSdk.stopConnect();
+        }else {
             // 改变按钮颜色
             isSharing = true;
             item.setTitle("停止分享");
-            Log.d("myTest","start shared file...");
+            Log.d("myTest", "start shared file pageNumber: " + pageNumber);
             Hole.setFecEnable(true);
-            Hole.startConnect("","47.92.86.188:9090","turn://admin:123456@47.92.86.188","ctrl","whatever");
+            Hole.startConnect("", "47.92.86.188:9090", "turn://admin:123456@47.92.86.188", "ctrl", "whatever");
             startOK = true;
-            //encoder.startEncoder();
+           // RtmpSdk.startConnect("rtmp://47.92.86.188/live/test");
+
+
+            // encoder.startEncoder(); // 如果需要取消注释，请确保它在适当的位置
         }
     }
 
@@ -258,7 +258,9 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     public void onPageChanged(int page, int pageCount) {
+        Log.d("myTest","onPageChanged ...");
         pageNumber = page;
+        pageTotal = pageCount;
         setTitle(String.format("%s %s / %s", pdfFileName, page + 1, pageCount));
         String directoryPath = Environment.getExternalStorageDirectory().getAbsolutePath();
         String fullPath = directoryPath +"/"+pdfFileName;
@@ -297,12 +299,13 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
           //  FileOutputStream outputStream = new FileOutputStream(outputFile);
           //  bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
 
-            int result = encoder.encodeBitmapToH264(bitmap, 720, 1280,0);
-           /* if (startOK){
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    encoder.encodeBitmap(bitmap,720,1280);
-                }
-            }*/
+
+            if (startOK) {
+               // encodeFinished = false;
+               int result = encoder.encodeBitmapToH264(bitmap, 720, 1280, 1);
+             //  encoder.encodeBitmap(bitmap,720,1280);
+               // encodeFinished = true;
+            }
 
 
             Log.d("myTest", "end..");
@@ -318,6 +321,7 @@ public class PDFViewActivity extends AppCompatActivity implements OnPageChangeLi
         }
 
     }
+
 
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private File copyPdfFromAssetsToCache(String fileName) {
